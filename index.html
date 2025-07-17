@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Worst GDPS Demonlist!!!</title>
+    <script>
+        if (!Array.prototype.last){
+            Array.prototype.last = function(){
+                return this[this.length - 1];
+            };
+        };
+
+
+    
+
+        function updatepage(data, victorslist, verifierslist){
+            
+            compiledHTML = ""
+            listindex = 0
+            for (level of data){
+                listindex++
+                console.log(listindex)
+               
+
+                ytlink = ((level["link"] || "N/A").split("watch?v=").last()).split("embed/").last()
+
+                verifiers = (level["verifiers"] || "N/A").replace(/(,\s|,)/g, "<br>")
+                victors = (level["victors"] || "N/A").replace(/(,\s|,)/g, "<br>")
+
+                
+                verifiers = ""
+                victors = ""
+                
+                let victorsHtml = (level["victors"] || "N/A").split(/,\s|,/).map(player => {
+                    const playerString = player;
+                    const playerLower = player.toLowerCase();
+                
+                    const targetObject = victorslist.find(obj => obj.VICTORS === level.id);
+                    if (targetObject && targetObject.hasOwnProperty(playerLower)) {
+                        const vlink = targetObject[playerLower];
+                        return vlink ? `<a href="${vlink}">${playerString}</a><br>` : `${playerString}<br>`;
+                    } else {
+                        return `${playerString}<br>`;
+                    }
+                }).join('');
+                
+                let verifiersHtml = (level["verifiers"] || "N/A").split(/,\s|,/).map(player => {
+                    const playerString = player;
+                    const playerLower = player.toLowerCase();
+                
+                    const targetObject = verifierslist.find(obj => obj.VERIFIERS === level.id);
+                    if (targetObject && targetObject.hasOwnProperty(playerLower)) {
+                        const vlink = targetObject[playerLower];
+                        return vlink ? `<a href="${vlink}">${playerString}</a><br>` : `${playerString}<br>`;
+                    } else {
+                        return `${playerString}<br>`;
+                    }
+                }).join('');
+
+                
+                extratext = level.wastop1 ? `<img id="top1" src="top1.gif" style="float: right;"> ` : "";
+                
+
+                compiledHTML += `
+                <div class="levelcontainer">
+                <div>
+                    <span id="name">#${listindex} - ${level["name"]}</span><br>
+                    <span id="creator">${level["creator"]}</span>
+                    <span id="id">id: ${level["id"]}</span>
+                    ${extratext}
+                </div>	<br>
+                <div>
+                    
+                    
+
+<iframe
+  
+  src="https://www.youtube.com/embed/${ytlink}&autoplay=1"
+  srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:white;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/${ytlink}?autoplay=1><img src=https://img.youtube.com/vi/${ytlink}/hqdefault.jpg><span>▶</span></a>"
+  frameborder="0"
+  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+  allowfullscreen
+  title="${level["name"]}"
+style="aspect-ratio: 16 / 9;"></iframe>
+
+
+                </div>  <br>
+                <div>   
+                    <div class="smallcontainer">
+                    <b><span>Victors:</span><br></b>
+                    <span>${victorsHtml}</span>
+                    </div><div class="smallcontainer" style="float: right;">
+                    <b><span >Verifier:</span></b><br>
+                    <span >${verifiersHtml}</span>
+                    </div>
+                </div>
+                </div>
+                `
+            }
+            document.querySelector(".listcontainer").innerHTML = compiledHTML
+            document.querySelector(".loader").remove()
+        }
+    
+
+        
+
+
+        const urls = [
+            "https://opensheet.elk.sh/1wT6zaNJkrxWJR9hvqzBtjGTm35_p90KllGTsW1Ec71U/main",
+            "https://opensheet.elk.sh/1wT6zaNJkrxWJR9hvqzBtjGTm35_p90KllGTsW1Ec71U/victors",
+            "https://opensheet.elk.sh/1wT6zaNJkrxWJR9hvqzBtjGTm35_p90KllGTsW1Ec71U/verifiers"
+        ];
+
+        const fetchPromises = urls.map(url => fetch(url).then(response => response.json()));
+
+
+        Promise.all(fetchPromises)
+        .then(results => {
+            
+            const [fetchdata, fetchvictors, fetchverifiers] = results;
+            
+            updatepage(fetchdata, fetchvictors, fetchverifiers);
+        })
+        .catch(error => {
+            console.error("Le errór:", error);
+        });
+
+        
+
+
+
+    </script>
+    <style>
+        .levelcontainer > div{
+            display:inline-block;
+            width: 100%;
+        }
+        .levelcontainer{
+            display: inline-block;
+            margin-bottom: 3em;
+
+            backdrop-filter: contrast(1.4);
+        }
+        #name{
+            font-size: xx-large;
+            font-weight: bold;
+        }
+        #creator{
+            font-size: x-large;
+            font-style: italic;
+            margin-right: 1ch;
+            font-family: "Comic Sans MS", "Comic Sans";
+        }
+        #top1{
+            height: 3em;
+            filter: drop-shadow(0 0 2.5px #000);
+        }
+        .levelcontainer iframe{
+            width: 95vw;
+            max-width: 464px;
+
+            
+        }
+        body{
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            min-width: 100vw;
+            background-size: 100vw 100vh;
+            background-repeat:round;
+            background-attachment: fixed;
+            background-position: center; 
+            background-image: radial-gradient(18% 28% at 24% 50%, #CEFAFFFF 7%, #073AFF00 100%),radial-gradient(18% 28% at 18% 71%, #FF00D859 6%, #073AFF00 100%),radial-gradient(70% 53% at 36% 76%, #73F2FFFF 0%, #073AFF00 100%),radial-gradient(42% 53% at 15% 94%, #FFFFFFFF 7%, #073AFF00 100%),radial-gradient(42% 53% at 34% 72%, #FFFFFFFF 7%, #073AFF00 100%),radial-gradient(18% 28% at 35% 87%, #FF0000FF 7%, #073AFF00 100%),radial-gradient(31% 43% at 7% 98%, #FFFFFFFF 24%, #073AFF00 100%),radial-gradient(21% 37% at 72% 23%, #D3FF6D9C 24%, #073AFF00 100%),radial-gradient(35% 56% at 91% 74%, #8A4FFFF5 9%, #073AFF00 100%),radial-gradient(74% 86% at 67% 38%, #FF43F5F5 24%, #073AFF00 100%),linear-gradient(70deg, #FFE54EFF 1%, #4C00FCFF 100%);
+            font-family: arial;
+            transition: 1.5s;
+
+
+        }
+        .listcontainer{
+            margin-left: auto;
+            margin-right: auto;
+            width: 95vw;
+            max-width: 464px;
+            text-align: left;
+        }
+        #title{
+            width: 95vw;
+            max-width: 764px;
+            
+        }
+        
+        .centered{
+            text-align: center;
+        }
+
+        .smallcontainer{
+            display: inline-block;
+        }
+        .loader {
+            border: 16px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 16px solid #000000;
+            transform: translate(-50%, -50%);
+            position: absolute;
+            top: 50vh;
+            left: 50vw;
+            transform-origin: top left;
+            width: 120px;
+            height: 120px;
+            -webkit-animation: spin 2s linear infinite; /* Safari */
+            animation: spin 2s linear infinite;
+          }
+          
+          /* Safari */
+          @-webkit-keyframes spin {
+            0% { -webkit-transform: rotate(0deg) translate(-50%, -50%); }
+            100% { -webkit-transform: rotate(360deg) translate(-50%, -50%); }
+          }
+          
+          @keyframes spin {
+            0% { transform: rotate(0deg) translate(-50%, -50%);}
+            100% { transform: rotate(360deg) translate(-50%, -50%);}
+          }
+    </style>
+</head>
+<body>
+    <div class="centered">
+    <img src="worstlist.png" id="title">
+    <div class="loader"></div>
+    
+    <div class="listcontainer">
+    
+        
+    
+
+    </div>
+</div>
+</body>
+</html>
+
