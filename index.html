@@ -135,7 +135,7 @@
                 <div>
 <iframe
   src="https://www.youtube-nocookie.com/embed/${escapeAttr(ytlink)}"
-  srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:white;text-shadow:0 0 2px black}img{width:100%;height:100%;object-fit:cover}</style><a href='https://www.youtube.com/watch?v=${escapeAttr(ytlink)}'><img src='https://img.youtube.com/vi/${escapeAttr(ytlink)}/hqdefault.jpg' alt='video'><span>Play</span></a>"
+  srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:white;text-shadow:0 0 2px black}img{width:100%;height:100%;object-fit:cover}</style><a href='https://www.youtube-nocookie.com/embed/${escapeAttr(ytlink)}'><img src='https://img.youtube.com/vi/${escapeAttr(ytlink)}/maxresdefault.jpg' alt='video'><span>&#x25B6;</span></a>"
   frameborder="0"
   allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
   allowfullscreen
@@ -212,7 +212,6 @@ style="aspect-ratio: 16 / 9;"></iframe>
             font-size: x-large;
             font-style: italic;
             margin-right: 1ch;
-            font-family: "Comic Sans MS", "Comic Sans";
         }
         #top1{
             height: 3em;
@@ -228,10 +227,11 @@ style="aspect-ratio: 16 / 9;"></iframe>
             min-height: 100vh;
             min-width: 100vw;
             background-size: 100vw 100vh;
-            background-repeat:round;
+            background-color:black;
             background-attachment: fixed;
             background-position: center; 
             font-family: arial;
+            color:green;
             transition: 1.5s;
         }
         .listcontainer{
@@ -294,7 +294,7 @@ style="aspect-ratio: 16 / 9;"></iframe>
 </head>
 <body>
     <div class="centered">
-    <img src="worstlist.png" id="title" alt="title">
+    <img src="https://images.cooltext.com/5743348.png" id="title" alt="title">
     <div class="loader"></div>
 
     <!-- Checkbox controls for selecting which sheet(s) to show.
