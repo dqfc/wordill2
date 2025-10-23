@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Worst GDPS Challengelists!!!</title>
+    <title>Worst GDPS DILL</title>
     <script>
         if (!Array.prototype.last){
             Array.prototype.last = function(){
@@ -11,124 +11,186 @@
             };
         };
 
+        // Spreadsheet ID (changed per request)
+        const SHEET_ID = "1d25CEIR9GhrGfV0ffpbNe07pRwHktpyQNDFk0D4MVuA";
+        const baseOpenSheet = (sheetName) => `https://opensheet.elk.sh/${SHEET_ID}/${sheetName}`;
 
-    
+        // Helpers to access fields with different capitalization/spaces
+        function getField(level, variants) {
+            for (const v of variants) {
+                if (level.hasOwnProperty(v) && level[v] !== "") return level[v];
+            }
+            return undefined;
+        }
+        function getDP(level) {
+            const v = getField(level, ["DP", "Dp", "dp"]);
+            const n = parseFloat((v || "").toString().replace(/[^0-9.\-]/g, "")); // strip non-numeric chars
+            return isNaN(n) ? 0 : n;
+        }
+        function getName(level) {
+            return getField(level, ["Name", "name"]) || "UNKNOWN";
+        }
+        function getCreator(level) {
+            return getField(level, ["Creator(s)", "Creator", "creator", "creator(s)"]) || "UNKNOWN";
+        }
+        function getId(level) {
+            return getField(level, ["ID", "Id", "id"]) || "N/A";
+        }
+        function getLink(level) {
+            return getField(level, ["YT Link", "YT_Link", "yt link", "link", "Link"]) || "";
+        }
 
-        function updatepage(data, victorslist, verifierslist){
+        // UI: ensure at least one checkbox remains checked
+        function ensureAtLeastOneCheckbox(checkboxes, changed) {
+            const checked = Array.from(checkboxes).filter(cb => cb.checked);
+            if (checked.length === 0) {
+                // Revert the change (don't allow all to be unchecked)
+                changed.checked = true;
+                return false;
+            }
+            return true;
+        }
+
+        // Load data for currently-checked list(s) and update the page
+        function loadSelectedLists() {
+            const checkboxes = document.querySelectorAll('.list-toggle');
+            const selected = Array.from(checkboxes).filter(cb => cb.checked).map(cb => cb.value);
+
+            // Build fetch promises for selected main lists
+            const mainPromises = selected.map(name => fetch(baseOpenSheet(name)).then(r => r.json()));
+
+            // Run all in parallel
+            Promise.all([Promise.all(mainPromises)])
+            .then(([mainResults]) => {
+                // mainResults is an array of arrays (one per selected sheet).
+                // Flatten them into a single array for display.
+                const compiledMain = mainResults.flat();
+
+                // Sort by DP descending
+                compiledMain.sort((a, b) => getDP(b) - getDP(a));
+
+                updatepage(compiledMain);
+            })
+            .catch(error => {
+                console.error("Le errór:", error);
+            });
+        }
+
+        function updatepage(data){
             
-            compiledHTML = ""
-            listindex = 0
-            for (level of data){
+            let compiledHTML = ""
+            let listindex = 0
+            for (const level of data){
                 listindex++
-                console.log(listindex)
-               
 
-                ytlink = ((level["link"] || "N/A").split("watch?v=").last()).split("embed/").last()
+                // Extract youtube id
+                const rawLink = getLink(level);
+                const ytlink = ((rawLink || "N/A").toString().split("watch?v=").last()).split("embed/").last();
 
-                verifiers = (level["verifiers"] || "N/A").replace(/(,\s|,)/g, "<br>")
-                victors = (level["victors"] || "N/A").replace(/(,\s|,)/g, "<br>")
+                const name = getName(level);
+                const creator = getCreator(level);
+                const id = getId(level);
+                const dp = getDP(level);
 
-                
-                verifiers = ""
-                victors = ""
-                
-                let victorsHtml = (level["victors"] || "N/A").split(/,\s|,/).map(player => {
-                    const playerString = player;
-                    const playerLower = player.toLowerCase();
-                
-                    const targetObject = victorslist.find(obj => obj.VICTORS === level.id);
-                    if (targetObject && targetObject.hasOwnProperty(playerLower)) {
-                        const vlink = targetObject[playerLower];
-                        return vlink ? `<a href="${vlink}">${playerString}</a><br>` : `${playerString}<br>`;
-                    } else {
-                        return `${playerString}<br>`;
+                // Build alternating extra fields (exclude name/creator/id/link)
+                const exclude = new Set(["Name","name","Creator(s)","Creator","creator","creator(s)","ID","Id","id","YT Link","YT_Link","yt link","link","Link"]);
+                const leftEntries = [];
+                const rightEntries = [];
+                let toggle = 0;
+                // Preserve original key order
+                for (const key of Object.keys(level)) {
+                    if (exclude.has(key)) continue;
+                    const rawVal = (level[key] === undefined || level[key] === null) ? "" : level[key];
+                    const displayVal = String(rawVal);
+                    const entryHtml = `<b>${escapeHtml(key)}:</b> ${escapeHtml(displayVal)}<br>`;
+                    if (toggle % 2 === 0) leftEntries.push(entryHtml); else rightEntries.push(entryHtml);
+                    toggle++;
+                }
+
+                // If there were no extra fields, show DP at left so something appears
+                if (toggle === 0) {
+                    leftEntries.push(`<b>DP:</b> ${dp}<br>`);
+                } else {
+                    // Ensure DP is visible somewhere too if not included
+                    const hasDP = Object.keys(level).some(k => /^DP$/i.test(k));
+                    if (!hasDP) {
+                        // append DP to left
+                        leftEntries.push(`<b>DP:</b> ${dp}<br>`);
                     }
-                }).join('');
-                
-                let verifiersHtml = (level["verifiers"] || "N/A").split(/,\s|,/).map(player => {
-                    const playerString = player;
-                    const playerLower = player.toLowerCase();
-                
-                    const targetObject = verifierslist.find(obj => obj.VERIFIERS === level.id);
-                    if (targetObject && targetObject.hasOwnProperty(playerLower)) {
-                        const vlink = targetObject[playerLower];
-                        return vlink ? `<a href="${vlink}">${playerString}</a><br>` : `${playerString}<br>`;
-                    } else {
-                        return `${playerString}<br>`;
-                    }
-                }).join('');
+                }
 
-                
-                extratext = level.wastop1 ? `<img id="top1" src="top1.gif" style="float: right;"> ` : "";
-                
+                const leftHtml = leftEntries.join("");
+                const rightHtml = rightEntries.join("");
+
+                const extratext = (getField(level, ["wastop1","wasTop1","wastop","top1"]) ? `<img id="top1" src="top1.gif" style="float: right;"> ` : "");
 
                 compiledHTML += `
                 <div class="levelcontainer">
                 <div>
-                    <span id="name">#${listindex} - ${level["name"]}</span><br>
-                    <span id="creator">${level["creator"]}</span>
-                    <span id="id">id: ${level["id"]}</span>
+                    <span id="name">#${listindex} - ${escapeHtml(name)}</span><br>
+                    <span id="creator">${escapeHtml(creator)}</span>
+                    <span id="id">id: ${escapeHtml(id)}</span>
                     ${extratext}
                 </div>	<br>
                 <div>
-                    
-                    
-
 <iframe
-  
-  src="https://www.youtube.com/embed/${ytlink}&autoplay=1"
-  srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:white;text-shadow:0 0 0.5em black}</style><a href=https://www.youtube.com/embed/${ytlink}?autoplay=1><img src=https://img.youtube.com/vi/${ytlink}/hqdefault.jpg><span>▶</span></a>"
+  src="https://www.youtube.com/embed/${escapeAttr(ytlink)}&autoplay=1"
+  srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:white;text-shadow:0 0 2px black}img{width:100%;height:100%;object-fit:cover}</style><a href='https://www.youtube.com/watch?v=${escapeAttr(ytlink)}'><img src='https://img.youtube.com/vi/${escapeAttr(ytlink)}/hqdefault.jpg' alt='video'><span>Play</span></a>"
   frameborder="0"
   allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
   allowfullscreen
-  title="${level["name"]}"
+  title="${escapeAttr(name)}"
 style="aspect-ratio: 16 / 9;"></iframe>
-
-
                 </div>  <br>
                 <div>   
                     <div class="smallcontainer">
-                    <b><span>Victors:</span><br></b>
-                    <span>${victorsHtml}</span>
+                    ${leftHtml}
                     </div><div class="smallcontainer" style="float: right;">
-                    <b><span >Verifier:</span></b><br>
-                    <span >${verifiersHtml}</span>
+                    ${rightHtml}
                     </div>
                 </div>
                 </div>
-                `
+                `;
             }
-            document.querySelector(".listcontainer").innerHTML = compiledHTML
-            document.querySelector(".loader").remove()
+            document.querySelector(".listcontainer").innerHTML = compiledHTML;
+            const loader = document.querySelector(".loader")
+            if (loader) loader.remove()
         }
-    
 
-        
+        // Small HTML escaping helpers
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+        function escapeAttr(str) {
+            return escapeHtml(str).replace(/"/g, '&quot;');
+        }
 
+        // Setup checkbox handlers once DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            // Insert event listeners for the checkboxes
+            const checkboxes = document.querySelectorAll('.list-toggle');
+            checkboxes.forEach(cb => {
+                cb.addEventListener('change', (e) => {
+                    // ensure at least one remains selected
+                    const ok = ensureAtLeastOneCheckbox(checkboxes, e.target);
+                    if (!ok) return;
+                    // reload data for new selection(s)
+                    loadSelectedLists();
+                });
+            });
 
-        const urls = [
-            "https://opensheet.elk.sh/1wT6zaNJkrxWJR9hvqzBtjGTm35_p90KllGTsW1Ec71U/main",
-            "https://opensheet.elk.sh/1wT6zaNJkrxWJR9hvqzBtjGTm35_p90KllGTsW1Ec71U/victors",
-            "https://opensheet.elk.sh/1wT6zaNJkrxWJR9hvqzBtjGTm35_p90KllGTsW1Ec71U/verifiers"
-        ];
+            // Initial load: ensure 'main' is checked by default
+            const mainCb = document.querySelector('input[value="main"]');
+            if (mainCb) mainCb.checked = true;
 
-        const fetchPromises = urls.map(url => fetch(url).then(response => response.json()));
-
-
-        Promise.all(fetchPromises)
-        .then(results => {
-            
-            const [fetchdata, fetchvictors, fetchverifiers] = results;
-            
-            updatepage(fetchdata, fetchvictors, fetchverifiers);
-        })
-        .catch(error => {
-            console.error("Le errór:", error);
+            // Trigger initial load
+            loadSelectedLists();
         });
-
-        
-
-
 
     </script>
     <style>
@@ -159,8 +221,6 @@ style="aspect-ratio: 16 / 9;"></iframe>
         .levelcontainer iframe{
             width: 95vw;
             max-width: 464px;
-
-            
         }
         body{
             margin: 0;
@@ -171,11 +231,8 @@ style="aspect-ratio: 16 / 9;"></iframe>
             background-repeat:round;
             background-attachment: fixed;
             background-position: center; 
-            background-image: radial-gradient(18% 28% at 24% 50%, #CEFAFFFF 7%, #073AFF00 100%),radial-gradient(18% 28% at 18% 71%, #FF00D859 6%, #073AFF00 100%),radial-gradient(70% 53% at 36% 76%, #73F2FFFF 0%, #073AFF00 100%),radial-gradient(42% 53% at 15% 94%, #FFFFFFFF 7%, #073AFF00 100%),radial-gradient(42% 53% at 34% 72%, #FFFFFFFF 7%, #073AFF00 100%),radial-gradient(18% 28% at 35% 87%, #FF0000FF 7%, #073AFF00 100%),radial-gradient(31% 43% at 7% 98%, #FFFFFFFF 24%, #073AFF00 100%),radial-gradient(21% 37% at 72% 23%, #D3FF6D9C 24%, #073AFF00 100%),radial-gradient(35% 56% at 91% 74%, #8A4FFFF5 9%, #073AFF00 100%),radial-gradient(74% 86% at 67% 38%, #FF43F5F5 24%, #073AFF00 100%),linear-gradient(70deg, #FFE54EFF 1%, #4C00FCFF 100%);
             font-family: arial;
             transition: 1.5s;
-
-
         }
         .listcontainer{
             margin-left: auto;
@@ -187,7 +244,6 @@ style="aspect-ratio: 16 / 9;"></iframe>
         #title{
             width: 95vw;
             max-width: 764px;
-            
         }
         
         .centered{
@@ -196,6 +252,8 @@ style="aspect-ratio: 16 / 9;"></iframe>
 
         .smallcontainer{
             display: inline-block;
+            vertical-align: top;
+            width: 46%;
         }
         .loader {
             border: 16px solid #f3f3f3;
@@ -222,20 +280,32 @@ style="aspect-ratio: 16 / 9;"></iframe>
             0% { transform: rotate(0deg) translate(-50%, -50%);}
             100% { transform: rotate(360deg) translate(-50%, -50%);}
           }
+
+        /* Checkbox area */
+        .list-toggle-row {
+            margin: 1rem 0;
+            font-size: 14px;
+        }
+        .list-toggle-row label {
+            margin-right: 1rem;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
     <div class="centered">
-    <img src="worstlist.png" id="title">
+    <img src="worstlist.png" id="title" alt="title">
     <div class="loader"></div>
-    
-    <div class="listcontainer">
-    
-        
-    
 
+    <!-- Checkbox controls for selecting which sheet(s) to show.
+         At least one must be selected; unchecking the last will be prevented. -->
+    <div class="list-toggle-row centered">
+        <label><input class="list-toggle" type="checkbox" value="main"> main</label>
+        <label><input class="list-toggle" type="checkbox" value="unranked"> unranked</label>
+        <label><input class="list-toggle" type="checkbox" value="unrestricted"> unrestricted</label>
     </div>
+    
+    <div class="listcontainer"></div>
 </div>
 </body>
 </html>
-
