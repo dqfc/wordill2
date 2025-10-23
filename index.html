@@ -124,15 +124,15 @@
                 const leftHtml = leftEntries.join("");
                 const rightHtml = rightEntries.join("");
 
-                const extratext = (getField(level, ["wastop1","wasTop1","wastop","top1"]) ? `<img id="top1" src="top1.gif" style="float: right;"> ` : "");
+//                const extratext = (getField(level, ["wastop1","wasTop1","wastop","top1"]) ? `<img id="top1" src="top1.gif" style="float: right;"> ` : "");
+//                     ${extratext}
 
                 compiledHTML += `
                 <div class="levelcontainer">
                 <div>
                     <span id="name">#${listindex} - ${escapeHtml(name)}</span><br>
                     <span id="creator">${escapeHtml(creator)}</span>
-                    <span id="id">id: ${escapeHtml(id)}</span>
-                    ${extratext}
+                    <span id="id">ID: ${escapeHtml(id)}</span>
                 </div>	<br>
                 <div>
 <iframe
