@@ -42,6 +42,40 @@
             return getField(level, ["YT Link", "YT_Link", "yt link", "link", "Link"]) || "";
         }
 
+        // Extract YouTube ID from a variety of link formats (watch?v=, embed/, youtu.be/ or raw id)
+        function getYouTubeId(rawLink) {
+            if (!rawLink) return "";
+            const s = rawLink.toString().trim();
+            // If it's likely already an ID (11 chars), return it
+            if (/^[A-Za-z0-9_-]{11}$/.test(s)) return s;
+            // Try to parse as URL
+            try {
+                const prefixed = s.includes('://') ? s : 'https://' + s;
+                const url = new URL(prefixed);
+                const host = url.hostname.toLowerCase();
+                if (host === 'youtu.be') {
+                    // path is /VIDEOID
+                    return url.pathname.replace(/^\/+/, '').split(/[?&]/)[0];
+                }
+                if (host.endsWith('youtube.com')) {
+                    // query param v
+                    const v = url.searchParams.get('v');
+                    if (v) return v;
+                    // /embed/VIDEOID
+                    const parts = url.pathname.split('/');
+                    const embedIndex = parts.indexOf('embed');
+                    if (embedIndex !== -1 && parts[embedIndex + 1]) return parts[embedIndex + 1];
+                }
+            } catch (e) {
+                // not a full URL, fall through to regex
+            }
+            // Fallback regex: look for common patterns
+            const m = s.match(/(?:v=|\/embed\/|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+            if (m) return m[1];
+            // If nothing matched, return original string (will result in broken embed, but preserves provided value)
+            return s;
+        }
+
         // UI: ensure at least one checkbox remains checked
         function ensureAtLeastOneCheckbox(checkboxes, changed) {
             const checked = Array.from(checkboxes).filter(cb => cb.checked);
@@ -66,7 +100,10 @@
             .then(([mainResults]) => {
                 // mainResults is an array of arrays (one per selected sheet).
                 // Flatten them into a single array for display.
-                const compiledMain = mainResults.flat();
+                let compiledMain = mainResults.flat();
+
+                // Filter out levels with DP === 0
+                compiledMain = compiledMain.filter(level => getDP(level) > 0);
 
                 // Sort by DP descending
                 compiledMain.sort((a, b) => getDP(b) - getDP(a));
@@ -82,78 +119,81 @@
             
             let compiledHTML = ""
             let listindex = 0
-            for (const level of data){
-                listindex++
 
-                // Extract youtube id
-                const rawLink = getLink(level);
-                const ytlink = ((rawLink || "N/A").toString().split("watch?v=").last()).split("embed/").last();
+            if (!Array.isArray(data) || data.length === 0) {
+                compiledHTML = '<div class="centered" style="color:lightgray">No levels with DP &gt; 0 found.</div>';
+            } else {
+                for (const level of data){
+                    listindex++
 
-                const name = getName(level);
-                const creator = getCreator(level);
-                const id = getId(level);
-                const dp = getDP(level);
+                    // Extract youtube id robustly
+                    const rawLink = getLink(level);
+                    const ytId = getYouTubeId(rawLink) || "N/A";
 
-                // Build alternating extra fields (exclude name/creator/id/link)
-                const exclude = new Set(["Name","name","Creator(s)","Creator","creator","creator(s)","ID","Id","id","YT Link","YT_Link","yt link","link","Link"]);
-                const leftEntries = [];
-                const rightEntries = [];
-                let toggle = 0;
-                // Preserve original key order
-                for (const key of Object.keys(level)) {
-                    if (exclude.has(key)) continue;
-                    const rawVal = (level[key] === undefined || level[key] === null) ? "" : level[key];
-                    const displayVal = String(rawVal);
-                    const entryHtml = `<b>${escapeHtml(key)}:</b> ${escapeHtml(displayVal)}<br>`;
-                    if (toggle % 2 === 0) leftEntries.push(entryHtml); else rightEntries.push(entryHtml);
-                    toggle++;
-                }
+                    const name = getName(level);
+                    const creator = getCreator(level);
+                    const id = getId(level);
+                    const dp = getDP(level);
 
-                // If there were no extra fields, show DP at left so something appears
-                if (toggle === 0) {
-                    leftEntries.push(`<b>DP:</b> ${dp}<br>`);
-                } else {
-                    // Ensure DP is visible somewhere too if not included
-                    const hasDP = Object.keys(level).some(k => /^DP$/i.test(k));
-                    if (!hasDP) {
-                        // append DP to left
-                        leftEntries.push(`<b>DP:</b> ${dp}<br>`);
+                    // Build alternating extra fields (exclude name/creator/id/link)
+                    const exclude = new Set(["Name","name","Creator(s)","Creator","creator","creator(s)","ID","Id","id","YT Link","YT_Link","yt link","link","Link"]);
+                    const leftEntries = [];
+                    const rightEntries = [];
+                    let toggle = 0;
+                    // Preserve original key order
+                    for (const key of Object.keys(level)) {
+                        if (exclude.has(key)) continue;
+                        const rawVal = (level[key] === undefined || level[key] === null) ? "" : level[key];
+                        const displayVal = String(rawVal);
+                        const entryHtml = `<b>${escapeHtml(key)}:</b> ${escapeHtml(displayVal)}<br>`;
+                        if (toggle % 2 === 0) leftEntries.push(entryHtml); else rightEntries.push(entryHtml);
+                        toggle++;
                     }
-                }
 
-                const leftHtml = leftEntries.join("");
-                const rightHtml = rightEntries.join("");
+                    // If there were no extra fields, show DP at left so something appears
+                    if (toggle === 0) {
+                        leftEntries.push(`<b>DP:</b> ${dp}<br>`);
+                    } else {
+                        // Ensure DP is visible somewhere too if not included
+                        const hasDP = Object.keys(level).some(k => /^DP$/i.test(k));
+                        if (!hasDP) {
+                            // append DP to left
+                            leftEntries.push(`<b>DP:</b> ${dp}<br>`);
+                        }
+                    }
 
-//                const extratext = (getField(level, ["wastop1","wasTop1","wastop","top1"]) ? `<img id="top1" src="top1.gif" style="float: right;"> ` : "");
-//                     ${extratext}
+                    const leftHtml = leftEntries.join("");
+                    const rightHtml = rightEntries.join("");
 
-                compiledHTML += `
-                <div class="levelcontainer">
-                <div>
-                    <span id="name">#${listindex} - ${escapeHtml(name)}</span><br>
-                    <span id="creator">${escapeHtml(creator)}</span>
-                    <span id="id">ID: ${escapeHtml(id)}</span>
-                </div>	<br>
-                <div>
-<iframe
-  src="https://www.youtube-nocookie.com/embed/${escapeAttr(ytlink)}?autoplay=1"
-  srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:white;text-shadow:0 0 2px black}img{width:100%;height:100%;object-fit:cover}</style><a href='https://www.youtube-nocookie.com/embed/${escapeAttr(ytlink)}'><img src='https://img.youtube.com/vi/${escapeAttr(ytlink)}/hqdefault.jpg' alt='video'><span>&#x25B6;</span></a>"
-  frameborder="0"
-  allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
-  allowfullscreen
-  title="${escapeAttr(name)}"
-style="aspect-ratio: 16 / 9;"></iframe>
-                </div>  <br>
-                <div>   
-                    <div class="smallcontainer">
-                    ${leftHtml}
-                    </div><div class="smallcontainer" style="float: right;">
-                    ${rightHtml}
+                    compiledHTML += `
+                    <div class="levelcontainer">
+                    <div>
+                        <span id="name">#${listindex} - ${escapeHtml(name)}</span><br>
+                        <span id="creator">${escapeHtml(creator)}</span>
+                        <span id="id">ID: ${escapeHtml(id)}</span>
+                    </div>	<br>
+                    <div>
+    <iframe
+      src="https://www.youtube-nocookie.com/embed/${escapeAttr(ytId)}?autoplay=1"
+      srcdoc="<style>*{padding:0;margin:0;overflow:hidden}html,body{height:100%}img,span{position:absolute;width:100%;top:0;bottom:0;margin:auto}span{height:1.5em;text-align:center;font:48px/1.5 sans-serif;color:white;background:rgba(0,0,0,.4)}</style><a href='https://www.youtube.com/watch?v=${escapeAttr(ytId)}'><img src='https://i.ytimg.com/vi/${escapeAttr(ytId)}/hqdefault.jpg' alt='${escapeAttr(name)}'><span>▶</span></a>"
+      frameborder="0"
+      allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen
+      title="${escapeAttr(name)}"
+    style="aspect-ratio: 16 / 9;"></iframe>
+                    </div>  <br>
+                    <div>   
+                        <div class="smallcontainer">
+                        ${leftHtml}
+                        </div><div class="smallcontainer" style="float: right;">
+                        ${rightHtml}
+                        </div>
                     </div>
-                </div>
-                </div>
-                `;
+                    </div>
+                    `;
+                }
             }
+
             document.querySelector(".listcontainer").innerHTML = compiledHTML;
             const loader = document.querySelector(".loader")
             if (loader) loader.remove()
